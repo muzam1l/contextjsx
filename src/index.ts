@@ -8,5 +8,5 @@ export {
   type Component,
   type Primitive,
 } from './jsx-runtime';
-export { render, Data, Pre, Lines } from './render';
+export { render, Data } from './render';
 export * from './define';

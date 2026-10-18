@@ -1,12 +1,5 @@
 import * as z from 'zod';
-import {
-  defineApp,
-  defineCommand,
-  defineNamespace,
-  defineResource,
-  defineSkill,
-  Pre,
-} from 'contextjsx';
+import { defineApp, defineCommand, defineNamespace, defineResource, defineSkill } from 'contextjsx';
 
 export const taskRun = defineCommand({
   name: 'run',
@@ -111,15 +104,13 @@ export const app = defineApp({
       compatibility: 'Needs the app binary on PATH.',
       metadata: { version: '1.0' },
       allowedTools: 'Bash(app:*) Read',
-      body: (
-        <Pre>{`## When to use
+      body: `## When to use
 
 The user asks to run, list or wait for a task.
 
 ## Rules
 
-Never retry a write after a timeout.`}</Pre>
-      ),
+Never retry a write after a timeout.`,
     }),
   ],
   resources: [

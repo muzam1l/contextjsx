@@ -1,34 +1,5 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`--help prints the app and command help, under 500 ms on node 1`] = `
-"contextjsx
-
-Serve a definition file as an MCP server, or write its docs and skills
-
-Commands:
-  serve <file> [--http] [--port <port>]: Serve a definition file as an MCP server
-  emit <file> [--out <out>] [--markdown] [--skills] [--all] [--index <index>] [--no-note]: Write Markdown docs and SKILL.md files from a definition file
-"
-`;
-
-exports[`--help prints the app and command help, under 500 ms on node 2`] = `
-"serve <file> [--http] [--port <port>]
-
-Serve a definition file as an MCP server
-
-With --http, prints the URL and token as JSON; send \`Authorization: Bearer <token>\` to the URL.
-
-Arguments:
-  <file>         module whose default export is a defineApp
-  --http         serve on loopback HTTP instead of stdio
-  --port <port>  port, default any free
-
-Examples:
-  contextjsx serve ./app.ts
-  contextjsx serve ./dist/app.js --http
-"
-`;
-
 exports[`--help prints the app and command help, under 1500 ms on node 1`] = `
 "contextjsx
 

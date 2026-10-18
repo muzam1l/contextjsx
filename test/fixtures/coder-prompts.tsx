@@ -1,5 +1,4 @@
 // Port of taskSystemPrompt and developerInstructions from Coder's src/core/prompts.ts; expected strings captured from that code.
-import { Pre } from 'contextjsx';
 import type { Node } from 'contextjsx';
 
 type Access = 'read' | 'write';
@@ -44,9 +43,8 @@ const HUB =
 
 const mode = (access: Access) => (access === 'read' ? 'read-only' : 'read-write');
 
-const Lines = (props: { lines: Array<string | false | undefined> }) => (
-  <Pre>{props.lines.filter(Boolean).join('\n')}</Pre>
-);
+const Lines = (props: { lines: Array<string | false | undefined> }) =>
+  props.lines.filter(Boolean).join('\n');
 
 export const DeveloperInstructions = (props: {
   description?: string;
@@ -54,15 +52,9 @@ export const DeveloperInstructions = (props: {
   notes?: string;
 }) => (
   <developer-instructions>
-    <description>
-      <Pre>{props.description?.trim()}</Pre>
-    </description>
-    <instructions>
-      <Pre>{props.instructions?.trim()}</Pre>
-    </instructions>
-    <notes>
-      <Pre>{props.notes?.trim()}</Pre>
-    </notes>
+    <description>{props.description?.trim()}</description>
+    <instructions>{props.instructions?.trim()}</instructions>
+    <notes>{props.notes?.trim()}</notes>
   </developer-instructions>
 );
 
@@ -116,16 +108,10 @@ export const TaskSystemPrompt = (props: SystemPromptParts) => {
             ]}
           />
         </runtime>
-        <environment>
-          <Pre>{ENVIRONMENT}</Pre>
-        </environment>
-        <replies>
-          <Pre>{REPLIES}</Pre>
-        </replies>
+        <environment>{ENVIRONMENT}</environment>
+        <replies>{REPLIES}</replies>
         {props.platform && (
-          <platform name={props.platform.name}>
-            <Pre>{props.platform.prompt?.trim()}</Pre>
-          </platform>
+          <platform name={props.platform.name}>{props.platform.prompt?.trim()}</platform>
         )}
         {props.access && <AccessModes />}
         <Settings {...props} />
@@ -147,13 +133,9 @@ export const TaskSystemPrompt = (props: SystemPromptParts) => {
           ]}
         />
       </runtime>
-      <workspace>
-        <Pre>{WORKSPACE}</Pre>
-      </workspace>
+      <workspace>{WORKSPACE}</workspace>
       <result>When finished, give a concise summary of what you did and found.</result>
-      <task-instructions>
-        <Pre>{props.instructions?.trim()}</Pre>
-      </task-instructions>
+      <task-instructions>{props.instructions?.trim()}</task-instructions>
     </>
   );
 };

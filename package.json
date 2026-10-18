@@ -1,6 +1,6 @@
 {
   "name": "contextjsx",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A tiny library for typed agent context, defined once, served everywhere.",
   "type": "module",
   "sideEffects": false,

@@ -5,21 +5,6 @@ export function Data(props: { children?: Node }): Node {
   return props.children;
 }
 
-/** Whitespace and newlines kept; a text run's edges are still trimmed. */
-export function Pre(props: { children?: Node }): Node {
-  return props.children;
-}
-
-/** Each child on its own line; empty children left out. */
-export function Lines(props: { children?: Node }): Node {
-  return props.children;
-}
-
-interface Piece {
-  text: string;
-  pre: boolean;
-}
-
 interface Tag {
   name: string;
   attributes: string;
@@ -36,39 +21,27 @@ const ENTITIES: Record<string, string> = {
 
 const escapeXml = (text: string, pattern: RegExp) => text.replace(pattern, char => ENTITIES[char]!);
 
-function walk(node: Node, escape: boolean, pre: boolean, out: Array<Piece | Tag>): void {
+function walk(node: Node, escape: boolean, out: Array<string | Tag>): void {
   if (node == null || typeof node === 'boolean') return;
 
   if (typeof node === 'string' || typeof node === 'number') {
     const text = String(node);
-    out.push({ text: escape ? escapeXml(text, /[&<>]/g) : text, pre });
+    out.push(escape ? escapeXml(text, /[&<>]/g) : text);
     return;
   }
 
   if (Array.isArray(node)) {
-    for (const child of node) walk(child as Node, escape, pre, out);
+    for (const child of node) walk(child as Node, escape, out);
     return;
   }
 
   const { type, props } = node as Element;
   const children = props.children as Node;
-  if (type === Data) return walk(children, true, pre, out);
-  if (type === Pre) return walk(children, escape, true, out);
-  if (type === Lines) {
-    const rows = (Array.isArray(children) ? children : [children])
-      .map(child => {
-        const row: Array<Piece | Tag> = [];
-        walk(child as Node, escape, pre, row);
-        return write(normalize(row), '', ' ');
-      })
-      .filter(Boolean);
-    out.push({ text: rows.join('\n'), pre: true });
-    return;
-  }
-  if (typeof type === 'function') return walk(type(props), escape, pre, out);
+  if (type === Data) return walk(children, true, out);
+  if (typeof type === 'function') return walk(type(props), escape, out);
 
-  const items: Array<Piece | Tag> = [];
-  walk(children, escape, pre, items);
+  const items: Array<string | Tag> = [];
+  walk(children, escape, items);
   const content = normalize(items);
   if (!content.length && !props.keep) return;
 
@@ -85,32 +58,22 @@ function walk(node: Node, escape: boolean, pre: boolean, out: Array<Piece | Tag>
   out.push({ name: type, attributes, children: content });
 }
 
-function normalize(items: Array<Piece | Tag>): Array<string | Tag> {
+// Adjacent strings form one run, trimmed at its edges; empty runs vanish.
+function normalize(items: Array<string | Tag>): Array<string | Tag> {
   const out: Array<string | Tag> = [];
-  let pieces: Piece[] = [];
+  let run = '';
   const flush = () => {
-    let text = '';
-    let space = false;
-    for (const piece of pieces) {
-      let part = piece.text;
-      if (!piece.pre) {
-        part = part.replace(/\s+/g, ' ');
-        if ((space || !text) && part.startsWith(' ')) part = part.slice(1);
-      }
-      if (!part) continue;
-      text += part;
-      space = !piece.pre && part.endsWith(' ');
-    }
-    const run = (space ? text.slice(0, -1) : text).trim();
-    if (run) out.push(run);
-    pieces = [];
+    const text = run.trim();
+    if (text) out.push(text);
+    run = '';
   };
 
   for (const item of items) {
-    if ('name' in item) {
+    if (typeof item === 'string') run += item;
+    else {
       flush();
       out.push(item);
-    } else pieces.push(item);
+    }
   }
   flush();
 
@@ -127,9 +90,9 @@ function write(items: Array<string | Tag>, prefix: string, pad: string): string 
     .join('\n');
 }
 
-/** Whitespace collapsed, `Data` escaped, `Pre` kept, empty elements dropped; `indent` spaces per level, default 1. */
+/** Text as written, `Data` escaped, empty elements dropped; `indent` spaces per level, default 1. */
 export function render(node: Node, options: { indent?: number } = {}): string {
-  const items: Array<Piece | Tag> = [];
-  walk(node, false, false, items);
+  const items: Array<string | Tag> = [];
+  walk(node, false, items);
   return write(normalize(items), '', ' '.repeat(options.indent ?? 1));
 }

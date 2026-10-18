@@ -36,7 +36,7 @@ export function walk(app: App) {
 export function readSkill(
   skill: Skill,
 ): Skill & { name: string; description: string; text: string } {
-  if (skill.file === undefined) return { ...skill, text: render(skill.body).trim() };
+  if (skill.file === undefined) return { ...skill, text: render(skill.body) };
 
   const raw = readFileSync(skill.file, 'utf8');
   const front = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/.exec(raw);

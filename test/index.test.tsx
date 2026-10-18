@@ -1,10 +1,12 @@
 import { expect, test } from 'bun:test';
-import { Data, Lines, Pre, render } from 'contextjsx';
+import { Data, render } from 'contextjsx';
 import type { Node } from 'contextjsx';
 import { TaskSystemPrompt, cases, expected } from './fixtures/coder-prompts';
 
-test('whitespace runs, newlines included, collapse to one space', () => {
-  expect(render(<a>{'one  two\n\n  three\tfour'}</a>)).toBe('<a>\n one two three four\n</a>');
+test('text renders as written: newlines, indentation and runs of spaces stay', () => {
+  expect(render(<a>{'one  two\n\n  three\tfour'}</a>)).toBe(
+    '<a>\n one  two\n\n   three\tfour\n</a>',
+  );
 });
 
 test('trim applies to the joined child text, so Hello {name} keeps its space', () => {
@@ -28,28 +30,6 @@ test('attributes are always escaped, quotes included', () => {
   expect(render(<a title={`<"x" & 'y'>`}>z</a>)).toBe(
     '<a title="&lt;&quot;x&quot; &amp; &apos;y&apos;&gt;">\n z\n</a>',
   );
-});
-
-test('Pre keeps whitespace and newlines', () => {
-  expect(
-    render(
-      <a>
-        <Pre>{'one\n  two  three'}</Pre>
-      </a>,
-    ),
-  ).toBe('<a>\n one\n   two  three\n</a>');
-});
-
-test('Pre around Data escapes and keeps', () => {
-  expect(
-    render(
-      <a>
-        <Pre>
-          <Data>{'x < y\n  z'}</Data>
-        </Pre>
-      </a>,
-    ),
-  ).toBe('<a>\n x &lt; y\n   z\n</a>');
 });
 
 test('empty elements are dropped with their attributes', () => {
@@ -141,29 +121,4 @@ test('section bytes of deep Unicode render in linear time', () => {
   const r = render(deep(400), { indent: 0 });
   expect(performance.now() - t0).toBeLessThan(100);
   expect(r.length).toBeGreaterThan(400 * 4);
-});
-
-test('Pre drops leading and trailing whitespace of a run, keeps the inside', () => {
-  expect(
-    render(
-      <a>
-        <Pre>{'\n  one\n  two  \n\n'}</Pre>
-      </a>,
-    ),
-  ).toBe('<a>\n one\n   two\n</a>');
-});
-
-test('Lines puts each child on its own line and skips empty ones', () => {
-  const flows = '';
-  expect(
-    render(
-      <runtime>
-        <Lines>
-          {'Do the work yourself.'}
-          {flows}
-          {'Verify before the final message.'}
-        </Lines>
-      </runtime>,
-    ),
-  ).toBe('<runtime>\n Do the work yourself.\n Verify before the final message.\n</runtime>');
 });

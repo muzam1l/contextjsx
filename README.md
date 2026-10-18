@@ -18,9 +18,9 @@ Includes the `contextjsx` command line; `contextjsx --help` lists it.
 
 ## Parts
 
-- **[Core](#core).** Prompts composed like UI in JSX, commands, namespaces and skills typed in code. _0.4 kB_
+- **[Core](#core).** Prompts composed like UI in JSX, commands, namespaces and skills typed in code. _0.8 kB_
 - **[Emit](#emit).** Export as MCP instructions, CLI help, argv parsing, Markdown docs and skill files. _4.4 kB_
-- **[Serve](#serve).** Your commands and skills as an MCP server. _3.5 kB_
+- **[Serve](#serve).** Your commands and skills as an MCP server. _4.7 kB_
 
 ## Core
 
@@ -45,10 +45,7 @@ export const system = render(
 );
 ```
 
-Plain JSX, no React. Any tag name works. Built-in elements:
-
-- `Data` escapes text from users or tools, so it can never break your prompt.
-- `Pre` keeps whitespace and newlines as written.
+Plain JSX, no React. Any tag name works. Text renders as written. `Data` escapes text from users or tools, so it cannot break the markup of your prompt.
 
 Setup, two lines in tsconfig:
 

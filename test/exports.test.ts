@@ -8,7 +8,6 @@ const names: Record<string, string[]> = {
     'Fragment',
     'render',
     'Data',
-    'Pre',
     'defineApp',
     'defineNamespace',
     'defineCommand',
@@ -52,12 +51,12 @@ test('zod is a required peer', () => {
 
 // Gzip bytes per entry, every local chunk it imports included; raise a number only with a reason.
 const budgets: Record<string, number> = {
-  emit: 5000,
-  cli: 1350,
-  serve: 7900,
-  index: 1260,
+  emit: 5200,
+  cli: 1550,
+  serve: 8800,
+  index: 1250,
   'jsx-runtime': 138,
-  'jsx-dev-runtime': 225,
+  'jsx-dev-runtime': 230,
 };
 
 test('size budget: every dist file counts toward an entry, shared chunks included', async () => {

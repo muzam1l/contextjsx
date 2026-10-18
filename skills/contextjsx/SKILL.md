@@ -15,7 +15,7 @@ license: "MIT"
 ## Setup
 
 ```ts
-import { render, Data, Pre } from 'contextjsx';
+import { render, Data } from 'contextjsx';
 import {
   defineApp,
   defineCommand,
@@ -52,6 +52,5 @@ Install with `bun add contextjsx` or `npm i contextjsx`; zod 4 is the peer for c
 
 ## Rules
 
-- Plain JSX, no React. Any tag name works.
+- Plain JSX, no React. Any tag name works. Text renders as written.
 - `Data` escapes text from users or tools, so it cannot break the markup of your prompt.
-- `Pre` keeps whitespace and newlines as written.

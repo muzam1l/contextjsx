@@ -78,6 +78,12 @@ test('instructions of a 40-command app are under 50 lines and 10 ms', () => {
   expect(ms).toBeLessThan(10);
 });
 
+test('readSkill keeps a plain string body as written', () => {
+  expect(readSkill({ name: 'a', description: 'd', body: '# Title\n\n- one\n- two\n' }).text).toBe(
+    '# Title\n\n- one\n- two',
+  );
+});
+
 test('readSkill takes name and description from the file frontmatter, body without it', () => {
   expect(readSkill(filed)).toEqual({
     file: filed.file,

@@ -12,7 +12,7 @@ Model side: `contextjsx/serve` exposes an app as one MCP server: its commands as
 
 ## Design
 
-- Trust boundary in prompts: `Data` escapes, everything else verbatim, `Pre` keeps whitespace, default collapses.
+- Trust boundary in prompts: `Data` escapes, everything else renders as written.
 - One root, `defineApp`. The CLI app holds name, description, namespaces and commands; a model-facing app spreads it and adds `instructions` and `skills`.
 - A command declares only its own word; its path comes from the namespaces it sits in. One walk of the app (`walk`) gives every consumer the path.
 - Tool name is the path joined with `/`. Names that collide after mapping to `[A-Za-z0-9_-]` throw at start; skill names are unique.
