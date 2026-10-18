@@ -1,0 +1,54 @@
+---
+name: contextjsx
+description: 'Write typed agent context with contextjsx: JSX prompts, commands and skills defined once, served as CLI help, docs, SKILL.md and MCP. Use when code imports contextjsx or the user asks for prompts, an agent CLI, skills or an MCP server'
+---
+
+## When to use
+
+- Core (`contextjsx`): compose a prompt from components; define your commands, namespaces and skills once.
+- Emit (`contextjsx/emit`): MCP instructions, CLI help, argv parsing and routing, Markdown docs, SKILL.md files.
+- Serve (`contextjsx/serve`): expose your commands and skills to agents as an MCP server.
+
+## Setup
+
+```ts
+import { render, Data, Pre } from 'contextjsx';
+import {
+  defineApp,
+  defineCommand,
+  defineNamespace,
+  defineSkill,
+} from 'contextjsx';
+import {
+  instructions,
+  cli,
+  parse,
+  run,
+  markdown,
+  skills,
+} from 'contextjsx/emit';
+import { serve } from 'contextjsx/serve';
+```
+
+Install with `bun add contextjsx` or `npm i contextjsx`; zod 4 is the peer for command `args`. For JSX, set `"jsx": "react-jsx"` and `"jsxImportSource": "contextjsx"` in tsconfig.
+
+## Define
+
+- A command declares only its own word: `defineCommand({ name: 'run', description, args, access, run })`. Its path comes from where it sits: root `commands`, or a namespace chain.
+- `defineNamespace({ name, description, commands, namespaces?, skills?, usage?, aliases? })`. Namespaces nest; `aliases` maps extra words to command names.
+- One root, `defineApp({ name, description, commands, namespaces?, instructions?, skills? })`. The CLI uses commands and namespaces; MCP adds instructions and skills. A CLI build can keep them out by spreading: `defineApp({ ...app, instructions, skills })`.
+- `defineSkill({ name, description, body })` with a JSX body, or `defineSkill({ file })` with a markdown file whose frontmatter gives `name` and `description` (the definition wins when both do).
+- `mcp: false` keeps a command off MCP; `cli` holds CLI-only data such as positionals and examples.
+
+## Serve
+
+- Tool name is the command path joined with `/`: `flow/run`, root command `review`. Two names that collide after mapping other characters to `_` throw at start.
+- Instructions are your `instructions`, then per namespace its description, tool names and skill names.
+- With skills, a `load_skill` tool returns a skill's text by name.
+- `access: 'read'` becomes `readOnlyHint`; invalid arguments return the issues and the schema.
+
+## Rules
+
+- Plain JSX, no React. Any tag name works.
+- `Data` escapes text from users or tools, so it can never break your prompt.
+- `Pre` keeps whitespace and newlines as written.

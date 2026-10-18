@@ -1,0 +1,68 @@
+{
+  "name": "contextjsx",
+  "version": "0.0.2",
+  "description": "A tiny library for typed agent context, defined once, served everywhere.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muzam1l/contextjsx.git"
+  },
+  "homepage": "https://github.com/muzam1l/contextjsx#readme",
+  "bugs": "https://github.com/muzam1l/contextjsx/issues",
+  "keywords": [
+    "prompt",
+    "jsx",
+    "mcp",
+    "agent",
+    "cli",
+    "skills"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./emit": "./dist/emit.mjs",
+    "./jsx-dev-runtime": "./dist/jsx-dev-runtime.mjs",
+    "./jsx-runtime": "./dist/jsx-runtime.mjs",
+    "./serve": "./dist/serve.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc --noEmit && bun run lint",
+    "test": "bun test",
+    "bench": "bun run bench/run.ts",
+    "emit": "bun run build && bun dist/cli.mjs emit src/context/index.ts --all --out . --index cli.md",
+    "prepublishOnly": "bun run gate",
+    "gate": "bun run build && bun run check && bun test && bun run bench",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write ."
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/bun": "latest",
+    "@types/node": "^24",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.10",
+    "tsdown": "^0.23.1",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.71.2",
+    "zod": "^4.6.7"
+  },
+  "bin": {
+    "contextjsx": "dist/cli.mjs"
+  }
+}

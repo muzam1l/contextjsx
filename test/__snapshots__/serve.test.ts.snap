@@ -1,0 +1,17 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`instructions are the app text, a blank line, then the namespace blocks 1`] = `
+"<instructions>
+ Dispatch work with task/run, then read results with task/list.
+</instructions>
+
+app: Runs coding tasks on engines
+  tools: status
+  skills: app-tasks
+  task: Run and inspect tasks
+    tools: run list
+  agent: Configure agents
+    integrations: Agent integrations
+      tools: list
+      skills: integrations"
+`;

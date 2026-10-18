@@ -1,0 +1,144 @@
+import { afterAll, expect, test } from 'bun:test';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { markdown, skills } from 'contextjsx/emit';
+import { app as contextjsx } from '../src/context/index';
+import { app as sample } from './fixtures/sample-app';
+
+const root = new URL('../', import.meta.url).pathname;
+const bin = path.join(root, 'dist/cli.mjs');
+const sampleApp = path.join(root, 'test/fixtures/sample-app.tsx');
+
+const closers: Array<() => Promise<void> | void> = [];
+afterAll(async () => {
+  for (const close of closers) await close();
+});
+
+const cli = (args: string[], runtime = 'node') => {
+  const r = spawnSync(runtime, [bin, ...args], { encoding: 'utf8' });
+  return { code: r.status, out: r.stdout, err: r.stderr };
+};
+
+test('serve lists the tools of an app module under bun, and node says why it cannot', async () => {
+  const start = performance.now();
+  const client = new Client({ name: 'test', version: '0' });
+  await client.connect(
+    new StdioClientTransport({ command: 'bun', args: [bin, 'serve', sampleApp], stderr: 'ignore' }),
+  );
+  closers.push(() => client.close());
+  const { tools } = await client.listTools();
+  const ms = performance.now() - start;
+
+  expect(tools.map(tool => tool.name)).toEqual([
+    'status',
+    'task/run',
+    'task/list',
+    'agent/integrations/list',
+    'load_skill',
+  ]);
+  expect(ms).toBeLessThan(3000);
+  expect(cli(['serve', sampleApp])).toEqual({
+    code: 1,
+    out: '',
+    err: `Cannot import ${sampleApp}: Node ${spawnSync('node', ['-v'], { encoding: 'utf8' }).stdout.trim()} has no loader for .tsx. Run with bun, or build it to .js.\n`,
+  });
+});
+
+test('serve --http prints the URL and token, and the official client lists the tools', async () => {
+  const start = performance.now();
+  const child = spawn('bun', [bin, 'serve', sampleApp, '--http']);
+  closers.push(() => void child.kill());
+  const printed = await new Promise<string>(resolve => {
+    let text = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      text += chunk.toString();
+      if (text.endsWith('}\n')) resolve(text);
+    });
+  });
+  const { url, token } = JSON.parse(printed) as { url: string; token: string };
+  const client = new Client({ name: 'test', version: '0' });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(url), {
+      requestInit: { headers: { Authorization: `Bearer ${token}` } },
+    }),
+  );
+  closers.push(() => client.close());
+  const { tools } = await client.listTools();
+  const ms = performance.now() - start;
+
+  expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/app$/);
+  expect(token).toMatch(/^[0-9a-f-]{36}$/);
+  expect(tools.map(tool => tool.name)).toContain('agent/integrations/list');
+  expect(ms).toBeLessThan(5000);
+});
+
+test('emit lists the files without --out and writes them with it', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'contextjsx-emit-'));
+  expect(cli(['emit', sampleApp, '--all'], 'bun')).toEqual({
+    code: 0,
+    out: 'docs/index.md\ndocs/task.md\ndocs/agent.md\nskills/app-tasks/SKILL.md\nskills/integrations/SKILL.md\n',
+    err: '',
+  });
+  expect(cli(['emit', sampleApp, '--all', '--out', out], 'bun').code).toBe(0);
+  for (const [file, text] of Object.entries(markdown(sample)))
+    expect(readFileSync(path.join(out, 'docs', file), 'utf8')).toBe(text);
+  for (const [file, text] of Object.entries(skills(sample)))
+    expect(readFileSync(path.join(out, 'skills', file), 'utf8')).toBe(text);
+});
+
+test('emit --index names the main docs page', () => {
+  expect(cli(['emit', sampleApp, '--all', '--index', 'cli.md'], 'bun').out).toBe(
+    'docs/cli.md\ndocs/task.md\ndocs/agent.md\nskills/app-tasks/SKILL.md\nskills/integrations/SKILL.md\n',
+  );
+});
+
+test('emit without --markdown, --skills or --all is a ParseError', () => {
+  expect(cli(['emit', sampleApp], 'bun')).toEqual({
+    code: 1,
+    out: '',
+    err: 'Choose --markdown, --skills or --all.\nHelp: contextjsx emit --help\n',
+  });
+});
+
+test('emit --markdown writes only the docs', () => {
+  expect(cli(['emit', sampleApp, '--markdown'], 'bun').out).toBe(
+    'docs/index.md\ndocs/task.md\ndocs/agent.md\n',
+  );
+});
+
+test('emit --skills writes only the skills', () => {
+  expect(cli(['emit', sampleApp, '--skills'], 'bun').out).toBe(
+    'skills/app-tasks/SKILL.md\nskills/integrations/SKILL.md\n',
+  );
+});
+
+test('emit --no-note leaves the marker out of docs and skills', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'contextjsx-emit-'));
+  const written = cli(['emit', sampleApp, '--all', '--out', out, '--no-note'], 'bun')
+    .out.trim()
+    .split('\n');
+  expect(written).toHaveLength(5);
+  for (const file of written)
+    expect(readFileSync(file, 'utf8')).not.toContain('Generated by contextjsx');
+});
+
+test('committed docs/cli.md and skills/ equal a fresh emit', () => {
+  for (const [file, text] of Object.entries(markdown(contextjsx, { index: 'cli.md' })))
+    expect([file, readFileSync(path.join(root, 'docs', file), 'utf8')]).toEqual([file, text]);
+  for (const [file, text] of Object.entries(skills(contextjsx)))
+    expect([file, readFileSync(path.join(root, 'skills', file), 'utf8')]).toEqual([file, text]);
+});
+
+test('--help prints the app and command help, under 500 ms on node', () => {
+  const start = performance.now();
+  const top = cli(['--help']);
+  const ms = performance.now() - start;
+  expect(top.code).toBe(0);
+  expect(top.out).toMatchSnapshot();
+  expect(cli(['serve', '-h']).out).toMatchSnapshot();
+  expect(ms).toBeLessThan(500);
+});
