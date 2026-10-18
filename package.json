@@ -1,6 +1,6 @@
 {
   "name": "contextjsx",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "A tiny library for typed agent context, defined once, served everywhere.",
   "type": "module",
   "sideEffects": false,
@@ -12,12 +12,14 @@
   "homepage": "https://github.com/muzam1l/contextjsx#readme",
   "bugs": "https://github.com/muzam1l/contextjsx/issues",
   "keywords": [
+    "context",
     "prompt",
     "jsx",
     "mcp",
     "agent",
     "cli",
-    "skills"
+    "skills",
+    "typescript"
   ],
   "engines": {
     "node": ">=20"

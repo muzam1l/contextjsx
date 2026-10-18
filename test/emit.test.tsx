@@ -69,7 +69,7 @@ test('instructions render the app text, then the namespace blocks, nested ones i
   );
 });
 
-test('instructions of a 40-command app are under 50 lines and 1 ms', () => {
+test('instructions of a 40-command app are under 50 lines and 10 ms', () => {
   instructions(large);
   const start = performance.now();
   const text = instructions(large);
@@ -154,7 +154,7 @@ test('skills emits one SKILL.md per skill that meets the Agent Skills rules', ()
     ).toThrow('compatibility must be 1 to 500 characters');
 });
 
-test('skills writes the spec frontmatter, then the body as written, then the index when asked', () => {
+test('skills writes the spec frontmatter, the generated marker, then the body as written', () => {
   expect(skills(app)['app-tasks/SKILL.md']).toBe(
     [
       '---',

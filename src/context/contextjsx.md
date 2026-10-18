@@ -50,5 +50,5 @@ Install with `bun add contextjsx` or `npm i contextjsx`; zod 4 is the peer for c
 ## Rules
 
 - Plain JSX, no React. Any tag name works.
-- `Data` escapes text from users or tools, so it can never break your prompt.
+- `Data` escapes text from users or tools, so it cannot break the markup of your prompt.
 - `Pre` keeps whitespace and newlines as written.

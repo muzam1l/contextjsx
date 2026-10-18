@@ -1,18 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { render } from '../index';
-import type { App, Args, Command, Namespace, Node, Shape, Skill } from '../index';
+import type { App, Args, Command, Namespace, Shape, Skill } from '../index';
 
-const text = (node: Node) => (node == null ? '' : render(node));
-
-/** A command with its full path and its tool id, the path joined with `/`. */
+/** `id` is the path joined with `/`. */
 export type Entry = { path: string[]; id: string; command: Command };
 
-/**
- * Walks an app once, in definition order: root commands, then each namespace before its commands and nested namespaces.
- * @param app - App to walk.
- * @returns Every command with its path and id, every namespace with its path, and every skill.
- */
+/** Definition order: root commands, then each namespace before its commands and nested namespaces. */
 export function walk(app: App) {
   const commands: Entry[] = [];
   const namespaces: Array<{ path: string[]; namespace: Namespace }> = [];
@@ -38,42 +32,33 @@ export function walk(app: App) {
   return { commands, namespaces, skills };
 }
 
-// Frontmatter `key: value` lines, plain or quoted, and `|` / `>` blocks of the indented lines below; nothing else of YAML.
-function frontmatter(head: string) {
+/** A `file` skill is read without its frontmatter, which fills a missing `name` and `description`. */
+export function readSkill(
+  skill: Skill,
+): Skill & { name: string; description: string; text: string } {
+  if (skill.file === undefined) return { ...skill, text: render(skill.body).trim() };
+
+  const raw = readFileSync(skill.file, 'utf8');
+  const front = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/.exec(raw);
+  // `key: value` lines, plain or quoted, and `|` / `>` blocks of the indented lines below; nothing else of YAML.
   const fields: Record<string, string> = {};
-  const lines = head.split(/\r?\n/);
+  const lines = (front?.[1] ?? '').split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const [, key, value = ''] = /^([\w-]+):\s*(.*?)\s*$/.exec(lines[i]!) ?? [];
     if (!key) continue;
     const block = /^[|>][+-]?$/.test(value);
     const body: string[] = [];
     while (block && /^(\s|$)/.test(lines[i + 1] ?? 'end')) body.push(lines[++i]!.trim());
-    const folded = body
-      .join('\n')
-      .replace(/([^\n])\n(?=[^\n])/g, '$1 ')
-      .replace(/\n(\n+)/g, '$1');
-    if (block) fields[key] = (value[0] === '|' ? body.join('\n') : folded).trim();
-    else if (/^".*"$/.test(value)) fields[key] = JSON.parse(value) as string;
+    if (block) {
+      const text = body.join('\n');
+      fields[key] = (
+        value[0] === '|'
+          ? text
+          : text.replace(/([^\n])\n(?=[^\n])/g, '$1 ').replace(/\n(\n+)/g, '$1')
+      ).trim();
+    } else if (/^".*"$/.test(value)) fields[key] = JSON.parse(value) as string;
     else fields[key] = /^'.*'$/.test(value) ? value.slice(1, -1).replaceAll("''", "'") : value;
   }
-  return fields;
-}
-
-/**
- * A skill with its body as text: JSX rendered, or a `file` read without its leading `---` frontmatter block.
- * A file's frontmatter `name` and `description` fill the ones the definition leaves out.
- * @param skill - Skill to read.
- * @returns The skill with `name`, `description` and `text` set.
- * @throws When a `file` skill has no name or description in either place.
- */
-export function readSkill(
-  skill: Skill,
-): Skill & { name: string; description: string; text: string } {
-  if (skill.file === undefined) return { ...skill, text: text(skill.body).trim() };
-
-  const raw = readFileSync(skill.file, 'utf8');
-  const front = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/.exec(raw);
-  const fields = frontmatter(front?.[1] ?? '');
   const name = skill.name ?? fields.name;
   const description = skill.description ?? fields.description;
   if (!name || !description)
@@ -82,15 +67,13 @@ export function readSkill(
   return { ...skill, name, description, text: raw.slice(front?.[0].length ?? 0).trim() };
 }
 
-// Classic `.describe()` and mini `z.describe()` both write zod's global registry.
-const describe = (schema: Shape[string]) =>
-  (
+function args(command: Command) {
+  // Classic `.describe()` and mini `z.describe()` both write zod's global registry.
+  const registry = (
     globalThis as {
       __zod_globalRegistry?: { get(schema: object): { description?: string } | undefined };
     }
-  ).__zod_globalRegistry?.get(schema)?.description ?? '';
-
-function args(command: Command) {
+  ).__zod_globalRegistry;
   const all = Object.entries(command.args ?? {});
   const positional = command.cli?.positional ?? [];
   const ordered = [
@@ -112,16 +95,13 @@ function args(command: Command) {
     return {
       token: schema._zod.optin ? `[${bare}]` : plain,
       plain,
-      description: describe(schema),
+      description: registry?.get(schema)?.description ?? '',
     };
   });
 }
 
 const signature = (path: string[], command: Command) =>
   [...path, ...args(command).map(arg => arg.token)].join(' ');
-
-const line = (path: string[], command: Command) =>
-  `${signature(path, command)}: ${command.description}`;
 
 const table = (rows: Array<[string, string]>) => {
   const width = Math.max(...rows.map(([left]) => left.length));
@@ -130,18 +110,8 @@ const table = (rows: Array<[string, string]>) => {
     .join('\n');
 };
 
-/**
- * What an MCP server sends as instructions: the app's own text, then one block per namespace with its description, tool names and skill names, nested namespaces indented.
- * Tools are command names; `mcp: false` commands are left out.
- * @param app - App whose instructions are rendered.
- * @returns The app text, a blank line, then lines like `flow: Run flows`, `  tools: run list`, `  skills: flows`.
- */
+/** The app's instructions, a blank line, then per namespace its description, tool names and skill names; `mcp: false` commands left out. */
 export function instructions(app: App): string {
-  const head = app.instructions == null ? '' : render(app.instructions);
-  return [head, blocks(app)].filter(Boolean).join('\n\n');
-}
-
-function blocks(app: App): string {
   const block = (pad: string, commands: Command[] = [], skills: Skill[] = []) => {
     const tools = commands.filter(command => command.mcp !== false).map(command => command.name);
     return [
@@ -151,7 +121,7 @@ function blocks(app: App): string {
     ];
   };
 
-  return [
+  const index = [
     `${app.name}: ${app.description}`,
     ...block('  ', app.commands, app.skills),
     ...walk(app).namespaces.flatMap(({ path, namespace }) => {
@@ -164,38 +134,33 @@ function blocks(app: App): string {
   ]
     .filter(Boolean)
     .join('\n');
+
+  return [render(app.instructions), index].filter(Boolean).join('\n\n');
 }
 
-/**
- * Plain text for the host's CLI renderer.
- * @param app - App the target sits in; its walk gives the target's path.
- * @param target - Command or namespace whose help is rendered; omit for the app's own help.
- * @returns Plain-text usage, description and applicable details.
- */
+/** Plain-text help for the app, or for a command or namespace in it. */
 export function cli(app: App, target?: Command | Namespace): string {
   const { commands, namespaces } = walk(app);
-  const children = (at: string[], list: Command[] = [], nested: Namespace[] = []) => [
-    ...list.map((command): [string, string] => [line([...at, command.name], command), '']),
-    ...nested.map((namespace): [string, string] => [
-      `${[...at, namespace.name].join(' ')}: ${namespace.description}`,
-      '',
-    ]),
-  ];
 
-  if (!target) {
-    const rows = children([], app.commands, app.namespaces);
-    return [app.name, app.description, rows.length && `Commands:\n${table(rows)}`]
-      .filter(Boolean)
-      .join('\n\n');
-  }
-
-  if ('commands' in target) {
-    const at = namespaces.find(entry => entry.namespace === target)?.path ?? [target.name];
-    const rows = children(at, target.commands, target.namespaces);
+  if (!target || 'commands' in target) {
+    const at = target
+      ? (namespaces.find(entry => entry.namespace === target)?.path ?? [target.name])
+      : [];
+    const { description, commands: list = [], namespaces: nested = [] } = target ?? app;
+    const rows = [
+      ...list.map((command): [string, string] => [
+        `${signature([...at, command.name], command)}: ${command.description}`,
+        '',
+      ]),
+      ...nested.map((namespace): [string, string] => [
+        `${[...at, namespace.name].join(' ')}: ${namespace.description}`,
+        '',
+      ]),
+    ];
     return [
-      at.join(' '),
-      target.description,
-      text(target.usage),
+      at.join(' ') || app.name,
+      description,
+      render(target?.usage),
       rows.length && `Commands:\n${table(rows)}`,
     ]
       .filter(Boolean)
@@ -209,7 +174,7 @@ export function cli(app: App, target?: Command | Namespace): string {
   return [
     signature(at, target),
     target.description,
-    text(target.usage),
+    render(target.usage),
     list.length && `Arguments:\n${table(list.map(arg => [arg.plain, arg.description]))}`,
     target.access === 'read' && 'Read-only.',
     cli?.exit?.length &&
@@ -221,9 +186,6 @@ export function cli(app: App, target?: Command | Namespace): string {
     .join('\n\n');
 }
 
-/**
- * An argv word `parse` rejects; `arg` names the offending argument.
- */
 export class ParseError extends Error {
   arg: string;
   constructor(message: string, arg: string) {
@@ -253,19 +215,13 @@ function kind(schema: Shape[string]) {
   return def.type;
 }
 
-/**
- * Parses argv against a command: `cli.positional` names in order, every other arg a `--name` flag.
- * A last positional with an array schema takes every remaining word.
- * @param command - Command whose `args` schemas shape and validate the result.
- * @param argv - Words after the command path.
- * @returns Arguments typed from the command.
- * @throws ParseError on an unknown flag, missing value, extra or missing positional, or a schema failure.
- */
+/** `cli.positional` names in order, every other arg a `--name` flag; a last array positional takes the rest. */
 export function parse<S extends Shape>(command: Command<S>, argv: string[]): Args<S> {
   const shape: Shape = command.args ?? {};
   const names: string[] = command.cli?.positional ?? [];
   const raw: Record<string, unknown> = {};
   const words: string[] = [];
+  const own = (key: string) => (Object.hasOwn(shape, key) ? shape[key] : undefined);
 
   for (let i = 0; i < argv.length; i++) {
     const word = argv[i]!;
@@ -282,7 +238,6 @@ export function parse<S extends Shape>(command: Command<S>, argv: string[]): Arg
     const body = word.slice(dash.length);
     const eq = body.indexOf('=');
     const name = eq < 0 ? body : body.slice(0, eq);
-    const own = (key: string) => (Object.hasOwn(shape, key) ? shape[key] : undefined);
     // `--no-<flag>` sets a boolean flag false, unless an arg is named `no-<flag>` itself.
     const negated = name.slice(3);
     const flag = own(negated);
@@ -367,12 +322,7 @@ export function parse<S extends Shape>(command: Command<S>, argv: string[]): Arg
   return out as Args<S>;
 }
 
-/**
- * Walks argv words against command and namespace paths, longest match first, namespace aliases included.
- * @param app - App whose commands and namespaces are matched.
- * @param argv - Words from the command line.
- * @returns The command or namespace matched, its path and the words after it, or undefined.
- */
+/** Longest command or namespace path that prefixes argv, namespace aliases included. */
 export function resolve(
   app: App,
   argv: string[],
@@ -403,14 +353,7 @@ export function resolve(
   return found;
 }
 
-/**
- * Runs argv against an app: help, routing, parsing, the command, and its printed result.
- * `--help` or `-h` before `--`, a bare app name or a bare namespace prints help.
- * @param app - App whose commands and namespaces are routed.
- * @param argv - Words after the binary name.
- * @param io - `out` and `err` writers, defaulting to stdout and stderr.
- * @returns The exit code: 0 on success or help, 1 on an unknown command, bad argv or a thrown error.
- */
+/** `--help` or `-h` before `--`, a bare app or a bare namespace prints help; resolves to exit code 0 or 1. */
 export async function run(
   app: App,
   argv: string[],
@@ -457,7 +400,7 @@ function commandDoc({ path, command }: Entry): string {
   return [
     `## \`${signature(path, command)}\``,
     command.description,
-    text(command.usage),
+    render(command.usage),
     list.length &&
       list
         .map(arg => `- \`${arg.plain}\`${arg.description ? ` ${arg.description}` : ''}`)
@@ -472,12 +415,7 @@ function commandDoc({ path, command }: Entry): string {
     .join('\n\n');
 }
 
-/**
- * Markdown reference: a main page plus one page per top-level namespace, nested namespaces as sections. Written to `outDir` when given.
- * @param app - App whose commands and namespaces are documented.
- * @param opts - `outDir` to write the pages into; `index` names the main page, default `index.md`; `note: false` drops the generated marker.
- * @returns Page contents keyed by relative filename, or by written path with `outDir`.
- */
+/** A main page, default `index.md`, plus one page per top-level namespace with nested namespaces as sections. */
 export function markdown(app: App, opts: Emit & { index?: string } = {}): Record<string, string> {
   const main = opts.index ?? 'index.md';
   const mark = marker(opts);
@@ -518,14 +456,14 @@ export function markdown(app: App, opts: Emit & { index?: string } = {}): Record
       .flatMap(({ path, namespace: nested }) => [
         `## ${path.join(' ')}`,
         nested.description,
-        text(nested.usage),
+        render(nested.usage),
         ...under(path).map(commandDoc),
       ]);
     pages[file] = [
       mark,
       `# ${namespace.name}`,
       namespace.description,
-      text(namespace.usage),
+      render(namespace.usage),
       ...under([namespace.name]).map(commandDoc),
       ...sections,
     ]
@@ -537,64 +475,45 @@ export function markdown(app: App, opts: Emit & { index?: string } = {}): Record
   return write(pages, opts.outDir);
 }
 
-type Read = ReturnType<typeof readSkill>;
-
-// Agent Skills spec: name 1-64 of a-z, 0-9 and single inner hyphens; description 1-1024; compatibility 1-500.
-function validate(skill: Read) {
-  if (skill.name.length > 64 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(skill.name))
-    throw new Error(
-      `contextjsx: skill name "${skill.name}" must be 1 to 64 lowercase letters, digits and single hyphens`,
-    );
-  if (!skill.description || skill.description.length > 1024)
-    throw new Error(`contextjsx: skill "${skill.name}" description must be 1 to 1024 characters`);
-  const { compatibility } = skill;
-  if (compatibility !== undefined && (!compatibility || compatibility.length > 500))
-    throw new Error(`contextjsx: skill "${skill.name}" compatibility must be 1 to 500 characters`);
-}
-
-function skillText(app: App, skill: Read, mark: string | false): string {
-  const q = (value: string) => JSON.stringify(value);
-  const frontmatter = [
-    `name: ${skill.name}`,
-    `description: ${q(skill.description)}`,
-    skill.license !== undefined && `license: ${q(skill.license)}`,
-    skill.compatibility !== undefined && `compatibility: ${q(skill.compatibility)}`,
-    skill.metadata &&
-      `metadata:${Object.entries(skill.metadata)
-        .map(([key, value]) => `\n  ${q(key)}: ${q(value)}`)
-        .join('')}`,
-    skill.allowedTools !== undefined && `allowed-tools: ${q(skill.allowedTools)}`,
-  ];
-
-  return [`---\n${frontmatter.filter(Boolean).join('\n')}\n---`, mark, skill.text]
-    .filter(Boolean)
-    .join('\n\n')
-    .concat('\n');
-}
-
-/**
- * One `SKILL.md` per skill in the app and its namespaces, following the Agent Skills rules. Written to `outDir/<name>/` when given.
- * `file` skills are copied with their frontmatter cut and regenerated.
- * @param app - App whose skills are validated and emitted.
- * @param opts - `outDir` to write the skill folders into; `note: false` drops the generated marker.
- * @returns Contents keyed by `<name>/SKILL.md`, or by written path with `outDir`.
- * @throws When two skills share a name.
- */
+/** One `<name>/SKILL.md` per skill, validated against the Agent Skills spec; `file` frontmatter is regenerated. */
 export function skills(app: App, opts: Emit = {}): Record<string, string> {
   const files: Record<string, string> = {};
+  const q = (value: string) => JSON.stringify(value);
 
   for (const skill of walk(app).skills.map(readSkill)) {
-    validate(skill);
-    const file = `${skill.name}/SKILL.md`;
-    if (files[file] !== undefined)
-      throw new Error(`contextjsx: two skills are named "${skill.name}"`);
-    files[file] = skillText(app, skill, marker(opts));
+    const { name, description, compatibility } = skill;
+    if (name.length > 64 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name))
+      throw new Error(
+        `contextjsx: skill name "${name}" must be 1 to 64 lowercase letters, digits and single hyphens`,
+      );
+    if (!description || description.length > 1024)
+      throw new Error(`contextjsx: skill "${name}" description must be 1 to 1024 characters`);
+    if (compatibility !== undefined && (!compatibility || compatibility.length > 500))
+      throw new Error(`contextjsx: skill "${name}" compatibility must be 1 to 500 characters`);
+    const file = `${name}/SKILL.md`;
+    if (files[file] !== undefined) throw new Error(`contextjsx: two skills are named "${name}"`);
+
+    const frontmatter = [
+      `name: ${name}`,
+      `description: ${q(description)}`,
+      skill.license !== undefined && `license: ${q(skill.license)}`,
+      compatibility !== undefined && `compatibility: ${q(compatibility)}`,
+      skill.metadata &&
+        `metadata:${Object.entries(skill.metadata)
+          .map(([key, value]) => `\n  ${q(key)}: ${q(value)}`)
+          .join('')}`,
+      skill.allowedTools !== undefined && `allowed-tools: ${q(skill.allowedTools)}`,
+    ];
+    files[file] = [`---\n${frontmatter.filter(Boolean).join('\n')}\n---`, marker(opts), skill.text]
+      .filter(Boolean)
+      .join('\n\n')
+      .concat('\n');
   }
 
   return write(files, opts.outDir);
 }
 
-/** Where emitted files go, omit to get the contents only; `note: false` drops the generated marker. */
+/** Without `outDir`, returns contents only; `note: false` drops the generated marker. */
 export type Emit = { outDir?: string; note?: boolean };
 
 const marker = (opts: Emit) =>

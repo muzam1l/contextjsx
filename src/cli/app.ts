@@ -96,7 +96,6 @@ const emit = defineCommand({
   },
 });
 
-/** contextjsx's own CLI, defined with contextjsx. */
 export const app = defineApp({
   name: 'contextjsx',
   description: 'Serve a definition file as an MCP server, or write its docs and skills',

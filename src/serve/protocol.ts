@@ -1,16 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-/**
- * The MCP revision this server prefers.
- */
 export const PROTOCOL = '2025-11-25';
 const VERSIONS = [PROTOCOL, '2025-06-18', '2025-03-26', '2024-11-05'];
 
 type Id = string | number;
 export type Params = Record<string, unknown>;
-/**
- * One JSON-RPC 2.0 request, notification, result or error.
- */
 export type Message = {
   jsonrpc: '2.0';
   id?: Id;
@@ -19,22 +13,14 @@ export type Message = {
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 };
-/**
- * An MCP tool definition as listed by `tools/list`.
- */
 export type McpTool = {
   name: string;
   description?: string;
   inputSchema: Params;
   annotations?: { readOnlyHint?: boolean };
 };
-/**
- * Answers one request method; the signal aborts on `notifications/cancelled`.
- */
+/** The signal aborts on `notifications/cancelled`. */
 export type Handler = (params: Params, signal: AbortSignal) => unknown;
-/**
- * An MCP server: identity, capabilities and one handler per request method.
- */
 export type Server = {
   name: string;
   instructions?: string | undefined;
@@ -48,7 +34,6 @@ const failure = (id: Id | undefined, code: number, text: string): Message => ({
   error: { code, message: text },
 });
 
-// A JSON-RPC 2.0 object whose method, when present, is a string and whose id is a string or number.
 const valid = (msg: unknown): msg is Message => {
   if (typeof msg !== 'object' || msg === null || Array.isArray(msg)) return false;
   const { jsonrpc, method, id } = msg as Record<string, unknown>;
@@ -59,17 +44,12 @@ const valid = (msg: unknown): msg is Message => {
   );
 };
 
-// The id of an invalid message, when it carries a usable one.
 const idOf = (msg: unknown) => {
   const id = (msg as { id?: unknown } | null)?.id;
   return typeof id === 'string' || typeof id === 'number' ? id : undefined;
 };
 
-/**
- * Routes JSON-RPC messages to a server's handlers; `scope` keeps request ids of different sessions apart.
- * @param server - Server whose handlers answer requests.
- * @returns A function answering a request with a response, and a notification with undefined.
- */
+/** `scope` keeps request ids of different sessions apart. */
 export function dispatch(server: Server) {
   const sessions = new Map<string, Map<Id, AbortController>>();
   return async ({ id, method, params = {} }: Message, scope = ''): Promise<Message | undefined> => {
@@ -97,14 +77,14 @@ export function dispatch(server: Server) {
         };
         return { jsonrpc: '2.0', id, result };
       }
-      const h =
+      const handler =
         method === 'ping'
           ? () => ({})
           : Object.hasOwn(server.handlers, method)
             ? server.handlers[method]
             : undefined;
-      if (!h) return failure(id, -32601, `Method not found: ${method}`);
-      return { jsonrpc: '2.0', id, result: await h(params, ac.signal) };
+      if (!handler) return failure(id, -32601, `Method not found: ${method}`);
+      return { jsonrpc: '2.0', id, result: await handler(params, ac.signal) };
     } catch (e) {
       const code = (e as { code?: unknown }).code;
       return failure(
@@ -119,11 +99,7 @@ export function dispatch(server: Server) {
   };
 }
 
-/**
- * Streamable HTTP for one server: POST only, JSON responses, 202 for notifications, session id on initialize.
- * @param server - Server to answer with.
- * @returns A Node request listener; authentication and routing stay with the caller.
- */
+/** Streamable HTTP, POST and JSON only; authentication and routing stay with the caller. */
 export function httpHandler(server: Server) {
   const handle = dispatch(server);
   const reply = (res: ServerResponse, status: number, body?: Message, session?: string) => {
@@ -170,11 +146,7 @@ export function httpHandler(server: Server) {
   };
 }
 
-/**
- * Serves one server over newline-delimited JSON on stdin and stdout.
- * @param server - Server to answer with.
- * @returns A close function that stops reading stdin, and `done`, which resolves when stdin ends.
- */
+/** Newline-delimited JSON; `done` resolves when stdin ends. */
 export function serveStdio(server: Server) {
   const handle = dispatch(server);
   const write = (m: Message) => process.stdout.write(`${JSON.stringify(m)}\n`);

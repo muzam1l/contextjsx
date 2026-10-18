@@ -4,10 +4,7 @@ import type { App, Skill } from '../index';
 import { cli, instructions, readSkill, walk, type Entry } from '../emit/index';
 import { httpHandler, serveStdio, type McpTool, type Params, type Server } from './protocol';
 
-/**
- * Serves MCP over stdio or HTTP with an optional host and port.
- */
-export type Transport = 'stdio' | { http: { port?: number; host?: string } };
+export type Transport = 'stdio' | { http: { port?: number } };
 
 const text = (value: string) => ({ type: 'text' as const, text: value });
 const failed = (value: string) => ({ content: [text(value)], isError: true });
@@ -25,15 +22,15 @@ function server(app: App): Server {
     tools.set(entry.id, entry);
   }
 
-  const named = new Map<string, Skill>();
+  const skillsByName = new Map<string, Skill>();
   for (const skill of skills) {
     const { name } = readSkill(skill);
-    if (named.has(name)) throw new Error(`contextjsx: two skills are named "${name}"`);
-    named.set(name, skill);
+    if (skillsByName.has(name)) throw new Error(`contextjsx: two skills are named "${name}"`);
+    skillsByName.set(name, skill);
   }
 
   const seen = new Map<string, string>();
-  for (const id of [...tools.keys(), ...(named.size ? ['load_skill'] : [])]) {
+  for (const id of [...tools.keys(), ...(skillsByName.size ? ['load_skill'] : [])]) {
     const prev = seen.get(mapped(id));
     if (prev !== undefined)
       throw new Error(`contextjsx: tools "${prev}" and "${id}" both map to ${mapped(id)}`);
@@ -65,17 +62,6 @@ function server(app: App): Server {
     })),
   ];
 
-  const loadSkill: McpTool = {
-    name: 'load_skill',
-    description: 'Load a skill named in the server instructions; returns its full text',
-    inputSchema: {
-      type: 'object',
-      properties: { name: { type: 'string', description: 'skill name' } },
-      required: ['name'],
-    },
-    annotations: { readOnlyHint: true },
-  };
-
   return {
     name: app.name,
     instructions: instructions(app),
@@ -89,7 +75,21 @@ function server(app: App): Server {
             inputSchema: schema(entry),
             annotations: { readOnlyHint: entry.command.access === 'read' },
           })),
-          ...(named.size ? [loadSkill] : []),
+          ...(skillsByName.size
+            ? [
+                {
+                  name: 'load_skill',
+                  description:
+                    'Load a skill named in the server instructions; returns its full text',
+                  inputSchema: {
+                    type: 'object',
+                    properties: { name: { type: 'string', description: 'skill name' } },
+                    required: ['name'],
+                  },
+                  annotations: { readOnlyHint: true },
+                },
+              ]
+            : []),
         ],
       }),
 
@@ -97,11 +97,11 @@ function server(app: App): Server {
         const name = params.name as string;
         const args = (params.arguments ?? {}) as Params;
 
-        if (name === 'load_skill' && named.size) {
-          const skill = named.get(args.name as string);
+        if (name === 'load_skill' && skillsByName.size) {
+          const skill = skillsByName.get(args.name as string);
           if (!skill)
             return failed(
-              `Unknown skill ${JSON.stringify(args.name)}. Skills: ${[...named.keys()].join(', ')}`,
+              `Unknown skill ${JSON.stringify(args.name)}. Skills: ${[...skillsByName.keys()].join(', ')}`,
             );
           return { content: [text(readSkill(skill).text)] };
         }
@@ -160,14 +160,7 @@ function server(app: App): Server {
   };
 }
 
-/**
- * Serves an app as an MCP server: one tool per command named by its path joined with `/`,
- * `load_skill` when the app has skills, help resources, and instructions followed by the app's index.
- * @param app - App to serve.
- * @param transport - Stdio, or loopback HTTP with a bearer token.
- * @returns A close function; for stdio, `done`, which resolves when stdin ends; for HTTP, the URL and bearer token.
- * @throws When two tool names collide after mapping to `[A-Za-z0-9_-]`, or two skills share a name.
- */
+/** One tool per command, its path joined with `/`; throws when tool names collide after mapping to `[A-Za-z0-9_-]`. */
 export async function serve(
   app: App,
   transport: Transport,
@@ -175,7 +168,7 @@ export async function serve(
   const mcp = server(app);
   if (transport === 'stdio') return serveStdio(mcp);
 
-  const { host = '127.0.0.1', port = 0 } = transport.http;
+  const host = '127.0.0.1';
   const token = randomUUID();
   const handle = httpHandler(mcp);
   const { createServer } = await import('node:http');
@@ -192,7 +185,7 @@ export async function serve(
   });
   await new Promise<void>((resolve, reject) => {
     http.once('error', reject);
-    http.listen(port, host, () => {
+    http.listen(transport.http.port ?? 0, host, () => {
       http.off('error', reject);
       resolve();
     });
@@ -200,7 +193,7 @@ export async function serve(
   const address = http.address() as { port: number };
 
   return {
-    url: `http://${host.includes(':') ? `[${host}]` : host}:${address.port}/${app.name}`,
+    url: `http://${host}:${address.port}/${app.name}`,
     token,
     close: () =>
       new Promise(resolve => {

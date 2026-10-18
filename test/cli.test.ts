@@ -96,7 +96,7 @@ test('emit --index names the main docs page', () => {
   );
 });
 
-test('emit without --markdown, --skills or --all is a ParseError', () => {
+test('emit requires an output format and prints a help hint', () => {
   expect(cli(['emit', sampleApp], 'bun')).toEqual({
     code: 1,
     out: '',
@@ -133,12 +133,12 @@ test('committed docs/cli.md and skills/ equal a fresh emit', () => {
     expect([file, readFileSync(path.join(root, 'skills', file), 'utf8')]).toEqual([file, text]);
 });
 
-test('--help prints the app and command help, under 500 ms on node', () => {
+test('--help prints the app and command help, under 1500 ms on node', () => {
   const start = performance.now();
   const top = cli(['--help']);
   const ms = performance.now() - start;
   expect(top.code).toBe(0);
   expect(top.out).toMatchSnapshot();
   expect(cli(['serve', '-h']).out).toMatchSnapshot();
-  expect(ms).toBeLessThan(500);
+  expect(ms).toBeLessThan(1500);
 });

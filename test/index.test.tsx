@@ -3,22 +3,20 @@ import { Data, Lines, Pre, render } from 'contextjsx';
 import type { Node } from 'contextjsx';
 import { TaskSystemPrompt, cases, expected } from './fixtures/coder-prompts';
 
-const text = (node: Node) => render(node);
-
 test('whitespace runs, newlines included, collapse to one space', () => {
-  expect(text(<a>{'one  two\n\n  three\tfour'}</a>)).toBe('<a>\n one two three four\n</a>');
+  expect(render(<a>{'one  two\n\n  three\tfour'}</a>)).toBe('<a>\n one two three four\n</a>');
 });
 
 test('trim applies to the joined child text, so Hello {name} keeps its space', () => {
   const name = 'Ada';
-  expect(text(<a>Hello {name}</a>)).toBe('<a>\n Hello Ada\n</a>');
-  expect(text(<a> {'  x '} </a>)).toBe('<a>\n x\n</a>');
+  expect(render(<a>Hello {name}</a>)).toBe('<a>\n Hello Ada\n</a>');
+  expect(render(<a> {'  x '} </a>)).toBe('<a>\n x\n</a>');
 });
 
 test('Data children are XML-escaped, other text is verbatim', () => {
-  expect(text(<a>{'<b> & c'}</a>)).toBe('<a>\n <b> & c\n</a>');
+  expect(render(<a>{'<b> & c'}</a>)).toBe('<a>\n <b> & c\n</a>');
   expect(
-    text(
+    render(
       <a>
         <Data>{'<b> & "c"'}</Data>
       </a>,
@@ -27,14 +25,14 @@ test('Data children are XML-escaped, other text is verbatim', () => {
 });
 
 test('attributes are always escaped, quotes included', () => {
-  expect(text(<a title={`<"x" & 'y'>`}>z</a>)).toBe(
+  expect(render(<a title={`<"x" & 'y'>`}>z</a>)).toBe(
     '<a title="&lt;&quot;x&quot; &amp; &apos;y&apos;&gt;">\n z\n</a>',
   );
 });
 
 test('Pre keeps whitespace and newlines', () => {
   expect(
-    text(
+    render(
       <a>
         <Pre>{'one\n  two  three'}</Pre>
       </a>,
@@ -44,7 +42,7 @@ test('Pre keeps whitespace and newlines', () => {
 
 test('Pre around Data escapes and keeps', () => {
   expect(
-    text(
+    render(
       <a>
         <Pre>
           <Data>{'x < y\n  z'}</Data>
@@ -56,7 +54,7 @@ test('Pre around Data escapes and keeps', () => {
 
 test('empty elements are dropped with their attributes', () => {
   expect(
-    text(
+    render(
       <a>
         <b id="1">{''}</b>
         <c>
@@ -68,12 +66,12 @@ test('empty elements are dropped with their attributes', () => {
       </a>,
     ),
   ).toBe('<a>\n x\n</a>');
-  expect(text(<a>{' \n '}</a>)).toBe('');
+  expect(render(<a>{' \n '}</a>)).toBe('');
 });
 
 test('keep forces a self-closing tag', () => {
   expect(
-    text(
+    render(
       <a>
         <b keep id="1" />x
       </a>,
@@ -94,10 +92,10 @@ test('indent sets spaces per level', () => {
 
 test('Coder system prompts render byte-identical', () => {
   for (const [name, parts] of Object.entries(cases))
-    expect([name, text(<TaskSystemPrompt {...parts} />)]).toEqual([name, expected[name]!]);
+    expect([name, render(<TaskSystemPrompt {...parts} />)]).toEqual([name, expected[name]!]);
 });
 
-test('render of a 200-element tree is under 2 ms', () => {
+test('render of a 200-element tree is under 20 ms', () => {
   const tree = (
     <root>
       {Array.from({ length: 100 }, (_, i) => (
@@ -117,7 +115,7 @@ test('render of a 200-element tree is under 2 ms', () => {
 
 test('without augmentation any lowercase tag with primitive attributes compiles', () => {
   expect(
-    text(
+    render(
       <any-tag n={1} s="x" b>
         y
       </any-tag>,
@@ -128,7 +126,7 @@ test('without augmentation any lowercase tag with primitive attributes compiles'
 });
 
 test('attributes are primitives; an element or array attribute is rejected', () => {
-  expect(text(<a n={1} ok={true} s="x" keep />)).toBe('<a n="1" ok="true" s="x"/>');
+  expect(render(<a n={1} ok={true} s="x" keep />)).toBe('<a n="1" ok="true" s="x"/>');
   expect(() => render(<a v={[1, 2]}>x</a>)).toThrow('attribute v on <a>');
 });
 

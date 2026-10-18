@@ -1,7 +1,6 @@
 import { defineApp, defineSkill } from 'contextjsx';
 import { app as cli } from '../cli/app';
 
-/** contextjsx's full app: the CLI plus instructions and the authoring skill. */
 export const app = defineApp({
   ...cli,
   instructions:

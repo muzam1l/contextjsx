@@ -6,7 +6,7 @@
 
 </div>
 
-Composable JSX for prompts; type-safe commands, namespaces and skills. One definition, used in code or exported to CLI help, docs, SKILL.md and MCP.
+Composable JSX for prompts. Type-safe tools and skills, defined once, used in code or served as CLI help, docs, SKILL.md and an MCP server.
 
 ## Install
 
@@ -19,7 +19,7 @@ Includes the `contextjsx` command line; `contextjsx --help` lists it.
 ## Parts
 
 - **[Core](#core).** Prompts composed like UI in JSX, commands, namespaces and skills typed in code. _0.4 kB_
-- **[Emit](#emit).** MCP instructions, CLI help, argv parsing, Markdown docs and skill files. _4.4 kB_
+- **[Emit](#emit).** Export as MCP instructions, CLI help, argv parsing, Markdown docs and skill files. _4.4 kB_
 - **[Serve](#serve).** Your commands and skills as an MCP server. _3.5 kB_
 
 ## Core
@@ -70,9 +70,9 @@ Describe what your product can do, once.
 import * as z from 'zod';
 import { defineApp, defineCommand, defineSkill } from 'contextjsx';
 
-// `run` in the CLI, `run` as a tool.
-const run = defineCommand({
-  name: 'run',
+// The CLI command `dispatch` and the MCP tool `dispatch`.
+const dispatch = defineCommand({
+  name: 'dispatch',
   description: 'Dispatch a task',
   // The schema of the command's arguments and the tool's input.
   args: { prompt: z.string().describe('what to do') },
@@ -91,13 +91,13 @@ const review = defineSkill({
 export const app = defineApp({
   name: 'app',
   description: 'Delegate coding tasks',
-  commands: [run],
+  commands: [dispatch],
   skills: [review],
-  instructions: 'Start work with run, then read results.',
+  instructions: 'Start work with dispatch, then read results.',
 });
 ```
 
-`defineNamespace` groups commands and skills under a word (`task run`, tool `task/run`) and nests. A skill can also be a markdown file: `defineSkill({ file })`, its frontmatter giving name and description. `mcp: false` keeps a command off MCP.
+`defineNamespace` groups commands and skills under a word (`task dispatch`, tool `task/dispatch`) and nests. A skill can also be a markdown file: `defineSkill({ file })`, its frontmatter giving name and description. `mcp: false` keeps a command off MCP.
 
 ## Emit
 
@@ -110,16 +110,23 @@ contextjsx emit ./app.ts --all --out .
 Or in code:
 
 ```ts
-import { instructions, cli, parse, markdown, skills } from 'contextjsx/emit';
+import {
+  instructions,
+  cli,
+  parse,
+  run,
+  markdown,
+  skills,
+} from 'contextjsx/emit';
 
 // What your MCP server tells the model: your text, then its tools and skills.
 const text = instructions(app);
 
-// Help text for `run --help`.
-const help = cli(app, run);
+// Help text for `dispatch --help`.
+const help = cli(app, dispatch);
 
 // Typed args from argv; throws ParseError naming the bad arg.
-const { prompt } = parse(run, ['--prompt', 'fix the build']);
+const { prompt } = parse(dispatch, ['--prompt', 'fix the build']);
 
 // index.md plus a page per namespace.
 markdown(app, { outDir: './docs' });
@@ -156,7 +163,7 @@ await serve(app, 'stdio');
 const { url, token } = await serve(app, { http: {} });
 ```
 
-Each command becomes a tool, `run` or `task/run`; your instructions and skills come along, loaded by the agent when it needs them.
+Each command becomes a tool, `dispatch` or `task/dispatch`; your instructions and skills come along, loaded by the agent when it needs them.
 
 ## Develop
 
