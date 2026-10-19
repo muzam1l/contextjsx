@@ -37,6 +37,25 @@ function server(app: App): Server {
     seen.set(mapped(id), id);
   }
 
+  // Required fields of the MCP SDK CallToolResultSchema; a match is served as is.
+  const toolResult = z.object({
+    content: z.array(
+      z.union([
+        z.object({ type: z.literal('text'), text: z.string() }),
+        z.object({ type: z.enum(['image', 'audio']), data: z.string(), mimeType: z.string() }),
+        z.object({ type: z.literal('resource_link'), uri: z.string(), name: z.string() }),
+        z.object({
+          type: z.literal('resource'),
+          resource: z.union([
+            z.object({ uri: z.string(), text: z.string() }),
+            z.object({ uri: z.string(), blob: z.string() }),
+          ]),
+        }),
+      ]),
+    ),
+    isError: z.boolean().optional(),
+  });
+
   const schemas = new Map<string, Params>();
   const schema = ({ id, command }: Entry) => {
     let json = schemas.get(id);
@@ -117,6 +136,8 @@ function server(app: App): Server {
 
         try {
           const result = await command.run(parsed.data, { signal });
+          if (!(command.mcp || undefined)?.text && toolResult.safeParse(result).success)
+            return result;
           const body =
             command.mcp && command.mcp.text
               ? command.mcp.text(result)

@@ -145,6 +145,32 @@ test('a thrown error is an error result with its message', async () => {
   expect([result.isError, texts(result)]).toEqual([true, ['daemon down']]);
 });
 
+test('a returned string or plain object serves as one text block, even one shaped like content', async () => {
+  const say = { ...status, run: () => 'up' };
+  const dump = { ...status, name: 'dump', run: () => ({ content: [{ type: 'text', text: 42 }] }) };
+  const client = await overHttp({ ...app, commands: [say, dump] });
+  expect(await client.callTool({ name: 'status', arguments: {} })).toEqual({
+    content: [{ type: 'text', text: 'up' }],
+  });
+  expect(await client.callTool({ name: 'dump', arguments: {} })).toEqual({
+    content: [{ type: 'text', text: '{"content":[{"type":"text","text":42}]}' }],
+  });
+});
+
+test('a returned MCP call-tool result serves as is, image block and isError included', async () => {
+  const passed = {
+    content: [
+      { type: 'text' as const, text: 'shot failed' },
+      { type: 'image' as const, data: 'iVBORw0KGgo=', mimeType: 'image/png' },
+    ],
+    structuredContent: { code: 7 },
+    isError: true,
+  };
+  const proxy = { ...status, run: () => passed };
+  const client = await overHttp({ ...app, commands: [proxy] });
+  expect(await client.callTool({ name: 'status', arguments: {} })).toEqual(passed);
+});
+
 test('mcp: false commands are absent from tools, resources and instructions', async () => {
   const client = await overHttp(app);
   expect((await client.listTools()).tools.map(tool => tool.name)).not.toContain('login');

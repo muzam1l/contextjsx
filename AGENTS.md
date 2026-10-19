@@ -18,7 +18,7 @@ Model side: `contextjsx/serve` exposes an app as one MCP server: its commands as
 - Tool name is the path joined with `/`. Names that collide after mapping to `[A-Za-z0-9_-]` throw at start; skill names are unique.
 - `serve` sends `instructions(app)`: the app's instructions, a blank line, then per namespace its description, tool names and skill names. No cap, never truncated.
 - Skills over MCP through `load_skill(name)` only, inline JSX or a markdown `file`. No resources for skills.
-- `serve` is a direct handler map: list, validate, run with `{ signal }`, text plus `next` hints. Invalid arguments return the issues and the schema. Large results are the client's concern.
+- `serve` is a direct handler map: list, validate, run with `{ signal }`, text plus `next` hints; a returned MCP call-tool result passes as is. Invalid arguments return the issues and the schema. Large results are the client's concern.
 - No registries, plugins, classes or single-implementation abstractions. Error classes may extend Error.
 
 ## Code
