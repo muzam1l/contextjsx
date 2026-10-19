@@ -15,6 +15,16 @@ test('trim applies to the joined child text, so Hello {name} keeps its space', (
   expect(render(<a> {'  x '} </a>)).toBe('<a>\n x\n</a>');
 });
 
+test('Data value prints as escaped JSON', () => {
+  expect(
+    render(
+      <meta>
+        <Data value={{ a: 1, b: '<x>' }} />
+      </meta>,
+    ),
+  ).toBe('<meta>\n {\n   "a": 1,\n   "b": "&lt;x&gt;"\n }\n</meta>');
+});
+
 test('Data children are XML-escaped, other text is verbatim', () => {
   expect(render(<a>{'<b> & c'}</a>)).toBe('<a>\n <b> & c\n</a>');
   expect(

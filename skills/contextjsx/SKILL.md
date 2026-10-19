@@ -52,5 +52,5 @@ Install with `bun add contextjsx` or `npm i contextjsx`; zod 4 is the peer for c
 
 ## Rules
 
-- Plain JSX, no React. Any tag name works. Text renders as written.
-- `Data` escapes text from users or tools, so it cannot break the markup of your prompt.
+- Plain JSX, no React. Use any lowercase tag for markup, capitalized names are for components.
+- `Data` escapes text from users or tools, so it cannot break the markup of your prompt. `<Data value={obj} />` prints an object as JSON.

@@ -1,7 +1,7 @@
 import type { Element, Node } from './jsx-runtime';
 
-/** Untrusted text: `&`, `<` and `>` escaped. */
-export function Data(props: { children?: Node }): Node {
+/** Untrusted text: `&`, `<` and `>` escaped; `value` printed as JSON. */
+export function Data(props: { value?: unknown; children?: Node }): Node {
   return props.children;
 }
 
@@ -37,7 +37,10 @@ function walk(node: Node, escape: boolean, out: Array<string | Tag>): void {
 
   const { type, props } = node as Element;
   const children = props.children as Node;
-  if (type === Data) return walk(children, true, out);
+  if (type === Data) {
+    if (props.value !== undefined) walk(JSON.stringify(props.value, null, 2), true, out);
+    return walk(children, true, out);
+  }
   if (typeof type === 'function') return walk(type(props), escape, out);
 
   const items: Array<string | Tag> = [];
