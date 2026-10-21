@@ -272,3 +272,25 @@ test('serve over HTTP rejects an unauthenticated request, a wrong path and a tak
   expect((await fetch(other, { method: 'POST', headers })).status).toBe(404);
   await expect(serve(app, { http: { port: Number(new URL(url!).port) } })).rejects.toThrow();
 });
+
+test('serverInfo carries the app description and spec fields, instructions stay separate', async () => {
+  const client = await overHttp(
+    defineApp({
+      name: 'info',
+      title: 'Info',
+      version: '1.2.3',
+      description: 'What the app does.',
+      websiteUrl: 'https://example.com',
+      instructions: 'How to use it.',
+      commands: [],
+    }),
+  );
+  expect(client.getServerVersion()).toEqual({
+    name: 'info',
+    title: 'Info',
+    version: '1.2.3',
+    description: 'What the app does.',
+    websiteUrl: 'https://example.com',
+  });
+  expect(client.getInstructions()).toStartWith('How to use it.');
+});

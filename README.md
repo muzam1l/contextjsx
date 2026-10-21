@@ -164,7 +164,7 @@ await serve(app, 'stdio');
 const { url, token } = await serve(app, { http: {} });
 ```
 
-Each command becomes a tool, `dispatch` or `task/dispatch`; your instructions and skills come along, loaded by the agent when it needs them.
+Each command becomes a tool, `dispatch` or `task/dispatch`; your instructions and skills come along, loaded by the agent when it needs them. The app's `description`, and its optional `title`, `version`, `websiteUrl` and `icons`, are the server's `serverInfo`; `instructions` say how to use it.
 
 ## Develop
 

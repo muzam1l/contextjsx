@@ -56,7 +56,7 @@ test('walk gives every command its path and a tool id joined with /', () => {
 test('instructions render the app text, then the namespace blocks, nested ones indented, mcp: false left out', () => {
   expect(instructions({ ...app, instructions: undefined })).toBe(
     [
-      'app: Runs coding tasks on engines',
+      'app:',
       '  tools: status',
       '  skills: app-tasks',
       '  task: Run and inspect tasks',

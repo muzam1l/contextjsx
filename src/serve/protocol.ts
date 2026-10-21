@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import type { Icon } from '../define';
+
 export const PROTOCOL = '2025-11-25';
 const VERSIONS = [PROTOCOL, '2025-06-18', '2025-03-26', '2024-11-05'];
 
@@ -21,8 +23,17 @@ export type McpTool = {
 };
 /** The signal aborts on `notifications/cancelled`. */
 export type Handler = (params: Params, signal: AbortSignal) => unknown;
-export type Server = {
+/** MCP `Implementation`, the `serverInfo` of `initialize`. */
+export type Implementation = {
   name: string;
+  title?: string;
+  version: string;
+  description?: string;
+  websiteUrl?: string;
+  icons?: Icon[];
+};
+export type Server = {
+  info: Implementation;
   instructions?: string | undefined;
   capabilities: Params;
   handlers: Record<string, Handler>;
@@ -72,7 +83,7 @@ export function dispatch(server: Server) {
         const result = {
           protocolVersion: VERSIONS.includes(asked) ? asked : PROTOCOL,
           capabilities: server.capabilities,
-          serverInfo: { name: server.name, version: '0' },
+          serverInfo: server.info,
           ...(server.instructions ? { instructions: server.instructions } : {}),
         };
         return { jsonrpc: '2.0', id, result };

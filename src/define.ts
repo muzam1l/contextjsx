@@ -72,9 +72,25 @@ export interface Resource {
   read(): string | Promise<string>;
 }
 
+/** An MCP icon: an image URL or `data:` URI. */
+export interface Icon {
+  src: string;
+  mimeType?: string;
+  sizes?: string[];
+  theme?: 'light' | 'dark';
+}
+
 export interface App {
   name: string;
+  /** Display name; clients fall back to `name`. */
+  title?: string;
+  /** Served as `serverInfo.version`; `0` when absent. */
+  version?: string;
+  /** What the app does, served as `serverInfo.description`. */
   description: string;
+  websiteUrl?: string;
+  icons?: Icon[];
+  /** How to use the app, served as the MCP `instructions`. */
   instructions?: Node;
   namespaces?: Namespace[];
   commands?: Command[];

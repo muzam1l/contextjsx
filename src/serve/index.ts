@@ -82,7 +82,14 @@ function server(app: App): Server {
   ];
 
   return {
-    name: app.name,
+    info: {
+      name: app.name,
+      ...(app.title ? { title: app.title } : {}),
+      version: app.version ?? '0',
+      description: app.description,
+      ...(app.websiteUrl ? { websiteUrl: app.websiteUrl } : {}),
+      ...(app.icons?.length ? { icons: app.icons } : {}),
+    },
     instructions: instructions(app),
     capabilities: resources.length ? { tools: {}, resources: {} } : { tools: {} },
     handlers: {

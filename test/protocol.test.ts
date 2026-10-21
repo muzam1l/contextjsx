@@ -5,7 +5,7 @@ import { dispatch, httpHandler, PROTOCOL, type Server } from '../src/serve/proto
 
 let aborted = false;
 const server: Server = {
-  name: 'echo',
+  info: { name: 'echo', version: '0' },
   instructions: 'Echo things.',
   capabilities: { tools: {} },
   handlers: {
