@@ -127,7 +127,12 @@ function server(app: App): Server {
           const skill = skillsByName.get(args.name as string);
           if (!skill)
             return failed(
-              `Unknown skill ${JSON.stringify(args.name)}. Skills: ${[...skillsByName.keys()].join(', ')}`,
+              [
+                `Unknown skill ${JSON.stringify(args.name)}. Skills:`,
+                ...[...skillsByName].map(
+                  ([each, entry]) => `- ${JSON.stringify(each)}: ${readSkill(entry).description}`,
+                ),
+              ].join('\n'),
             );
           return { content: [text(readSkill(skill).text)] };
         }

@@ -110,14 +110,17 @@ const table = (rows: Array<[string, string]>) => {
     .join('\n');
 };
 
-/** The app's instructions, a blank line, then per namespace its description, tool names and skill names; `mcp: false` commands left out. The app's own description is `serverInfo.description`, not repeated here. */
+/** The app's instructions, a blank line, then per namespace its description, tool names and skills, each skill with its description so a host need not list them again; `mcp: false` commands left out. The app's own description is `serverInfo.description`, not repeated here. */
 export function instructions(app: App): string {
   const block = (pad: string, commands: Command[] = [], skills: Skill[] = []) => {
     const tools = commands.filter(command => command.mcp !== false).map(command => command.name);
     return [
       tools.length && `${pad}tools: ${tools.join(' ')}`,
-      skills.length &&
-        `${pad}skills: ${skills.map(skill => skill.name ?? readSkill(skill).name).join(' ')}`,
+      skills.length && `${pad}skills:`,
+      ...skills.map(skill => {
+        const { name, description } = readSkill(skill);
+        return `${pad}  - ${JSON.stringify(name)}: ${description}`;
+      }),
     ];
   };
 

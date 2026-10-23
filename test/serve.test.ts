@@ -118,7 +118,13 @@ test('load_skill of an unknown name is an error result listing the skills', asyn
   const client = await overHttp(app);
   const result = await client.callTool({ name: 'load_skill', arguments: { name: 'nope' } });
   expect(result.isError).toBe(true);
-  expect(texts(result)).toEqual(['Unknown skill "nope". Skills: app-tasks, integrations']);
+  expect(texts(result)).toEqual([
+    [
+      'Unknown skill "nope". Skills:',
+      '- "app-tasks": Run coding tasks through app. Use when the user asks to dispatch or inspect a task.',
+      '- "integrations": Connect an agent to Slack or Linear. Use when the user asks which integrations an agent has.',
+    ].join('\n'),
+  ]);
 });
 
 test('an app without skills has no load_skill tool', async () => {

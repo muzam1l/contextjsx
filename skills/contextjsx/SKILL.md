@@ -46,7 +46,7 @@ Install with `bun add contextjsx` or `npm i contextjsx`; zod 4 is the peer for c
 ## Serve
 
 - Tool name is the command path joined with `/`: `flow/run`, root command `review`. Two names that collide after mapping other characters to `_` throw at start.
-- Instructions are your `instructions`, then per namespace its description, tool names and skill names.
+- Instructions are your `instructions`, then per namespace its description, tool names and skills, each with its description, so a host needs no list of its own.
 - With skills, a `load_skill` tool returns a skill's text by name.
 - `access: 'read'` becomes `readOnlyHint`; invalid arguments return the issues and the schema.
 

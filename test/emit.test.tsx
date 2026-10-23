@@ -58,13 +58,15 @@ test('instructions render the app text, then the namespace blocks, nested ones i
     [
       'app:',
       '  tools: status',
-      '  skills: app-tasks',
+      '  skills:',
+      '    - "app-tasks": Run coding tasks through app. Use when the user asks to dispatch or inspect a task.',
       '  task: Run and inspect tasks',
       '    tools: run list',
       '  agent: Configure agents',
       '    integrations: Agent integrations',
       '      tools: list',
-      '      skills: integrations',
+      '      skills:',
+      '        - "integrations": Connect an agent to Slack or Linear. Use when the user asks which integrations an agent has.',
     ].join('\n'),
   );
 });
