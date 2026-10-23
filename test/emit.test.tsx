@@ -58,17 +58,24 @@ test('instructions render the app text, then the namespace blocks, nested ones i
     [
       'app:',
       '  tools: status',
-      '  skills:',
+      '  skills, each loaded by name with load_skill:',
       '    - "app-tasks": Run coding tasks through app. Use when the user asks to dispatch or inspect a task.',
       '  task: Run and inspect tasks',
       '    tools: run list',
       '  agent: Configure agents',
       '    integrations: Agent integrations',
       '      tools: list',
-      '      skills:',
+      '      skills, each loaded by name with load_skill:',
       '        - "integrations": Connect an agent to Slack or Linear. Use when the user asks which integrations an agent has.',
     ].join('\n'),
   );
+});
+
+test('instructions without tool names keep the namespaces and skills, for a host that lists tools itself', () => {
+  const text = instructions({ ...app, instructions: undefined }, { tools: false });
+  expect(text).not.toContain('tools:');
+  expect(text).toContain('  task: Run and inspect tasks');
+  expect(text).toContain('    - "app-tasks": ');
 });
 
 test('instructions of a 40-command app are under 50 lines and 10 ms', () => {

@@ -110,13 +110,13 @@ const table = (rows: Array<[string, string]>) => {
     .join('\n');
 };
 
-/** The app's instructions, a blank line, then per namespace its description, tool names and skills, each skill with its description so a host need not list them again; `mcp: false` commands left out. The app's own description is `serverInfo.description`, not repeated here. */
-export function instructions(app: App): string {
+/** The app's instructions, a blank line, then per namespace its description, tool names and skills, each skill with its description so a host need not list them again; `mcp: false` commands left out. `tools: false` leaves the tool names out, for a host that lists them itself. The app's own description is `serverInfo.description`, not repeated here. */
+export function instructions(app: App, { tools: named = true }: { tools?: boolean } = {}): string {
   const block = (pad: string, commands: Command[] = [], skills: Skill[] = []) => {
     const tools = commands.filter(command => command.mcp !== false).map(command => command.name);
     return [
-      tools.length && `${pad}tools: ${tools.join(' ')}`,
-      skills.length && `${pad}skills:`,
+      named && tools.length && `${pad}tools: ${tools.join(' ')}`,
+      skills.length && `${pad}skills, each loaded by name with load_skill:`,
       ...skills.map(skill => {
         const { name, description } = readSkill(skill);
         return `${pad}  - ${JSON.stringify(name)}: ${description}`;
